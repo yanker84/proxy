@@ -16,12 +16,14 @@ public class Routing {
     public RouteLocator meliRoutes(RouteLocatorBuilder routeLocatorBuilder) {
         return routeLocatorBuilder.routes()
                 .route( p -> p.
-                        path("/mock-meli-api")
-                        .filters(f -> f.hystrix( config -> config.setName("mock-meli-api"))  )
-                        .uri("http://localhost:8081/proxy"))
+                        path("/mock-meli-api/**")
+                        .filters(f -> f.hystrix( config -> config.setName("mock-meli-api"))
+                                .rewritePath("http://localhost:8081/mock-meli-api/(?<segment>.*)","$\\{segment}"))
+                        .uri("http://localhost:8081"))
                 .route( p -> p.
                         path("/**")
-                        .filters(f -> f.hystrix( config -> config.setName("meli-api")))
+                        .filters(f -> f.hystrix( config -> config.setName("meli-api"))
+                                .rewritePath("https://api.mercadolibre.com/(?<segment>.*)","$\\{segment}"))
                         .uri("https://api.mercadolibre.com"))
                 .route("fortune_api", p -> p.path("/api-limited")
                         .filters(f -> f.hystrix( config -> config.setName("api-limited"))
@@ -29,54 +31,9 @@ public class Routing {
                                         c -> c.setBurstCapacity(1).setReplenishRate(1))
                                 .configure(c -> c.setKeyResolver(exchange -> Mono.just("1"))))
                                 .uri("http://localhost:8081/proxy"))
-          /*    .route(p -> p
-                    .path("/api-limited")
-              .filters(f -> f.addRequestHeader("Hello", "World"))
-                .uri("http://localhost:8081/proxy"))
-                .route(p -> p
-                        .host("*.hystrix.com")
-                        .filters(f -> f
-                                .hystrix(config -> config
-                                        .setName("mycmd")))
-                        .uri("http://localhost:8081/proxy"))*/
                 .build();
 
 
     }
 
 }
-
-/*
- cloud:
-         gateway:
-         routes:
-
-         - id: meliapi
-         uri: http://localhost:8081/proxy
-         order: 10000
-         filters:
-         - Hystrix=myCommandName
-
-         predicates:
-         - Path=/meli-api
-
-         - id: meliCustomServiceLimit
-         uri: http://localhost:8081/proxy
-         order: 20000
-         filters:
-         - name: RequestRateLimiter
-         args:
-         redis-rate-limiter.replenishRate: 1
-         redis-rate-limiter.burstCapacity: 2
-         predicates:
-         - Path=/controlled-api
-
-         - id: meliCustomService
-         uri: https://api.mercadolibre.com/
-         order: 30000
-
-         predicates:
-         - Path=/**
-
-
- */
